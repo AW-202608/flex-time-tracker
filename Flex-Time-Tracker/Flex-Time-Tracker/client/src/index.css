@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: 'Inter', 'Noto Sans JP', sans-serif;
+    
+    /* Japanese Minimalist Light Palette */
+    --background: 0 0% 98%;      /* Very soft warm white (#FAFAFA) */
+    --foreground: 220 15% 16%;   /* Soft dark gray (#22272E) */
+    
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 16%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 16%;
+    
+    --primary: 220 20% 25%;      /* Slate/Charcoal for primary actions */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 220 10% 92%;    /* Soft gray for secondary actions */
+    --secondary-foreground: 220 15% 16%;
+    
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 10% 45%;
+    
+    --accent: 200 15% 94%;
+    --accent-foreground: 220 15% 16%;
+    
+    --destructive: 350 70% 50%;  /* Muted sophisticated red */
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 220 10% 90%;
+    --input: 220 10% 90%;
+    --ring: 220 20% 25%;
+    
+    --radius: 0.5rem;
+    
+    /* Surplus / Deficit colors */
+    --surplus: 160 60% 40%;      /* Calm teal for surplus */
+    --deficit: 350 70% 50%;      /* Muted red for deficit */
+  }
+
+  .dark {
+    --background: 220 15% 10%;
+    --foreground: 0 0% 95%;
+    --card: 220 15% 12%;
+    --card-foreground: 0 0% 95%;
+    --popover: 220 15% 10%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 220 15% 16%;
+    --secondary: 220 15% 20%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 220 15% 16%;
+    --muted-foreground: 220 10% 65%;
+    --accent: 220 15% 20%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 350 60% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 220 10% 80%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
+    font-family: var(--font-sans);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight text-foreground;
+  }
+}
+
+/* Custom Scrollbar for a cleaner look */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/30 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}
+
+/* Glassmorphism utilities */
+.glass {
+  @apply bg-background/70 backdrop-blur-md border border-border/50;
+}
