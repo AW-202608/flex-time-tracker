@@ -49,7 +49,7 @@ export default function Dashboard() {
 
     const parsed = parseWorkTime(inputVal);
     if (!parsed) {
-      setErrorMsg("入力形式が正しくありません。例：9:30-18:30 または 9:30～18:30 (5分単位)");
+      setErrorMsg("入力形式が正しくありません。例：9:30-18:30 (5分単位)");
       return;
     }
 
@@ -238,7 +238,7 @@ export default function Dashboard() {
                {stats.surplusMins === 0 
                   ? "±0時間00分" 
                   : stats.surplusMins < 0 
-                    ? `あと${formatMinutes(Math.abs(stats.surplusMins))}不足`
+                    ? `${formatMinutes(Math.abs(stats.surplusMins))}不足`
                     : `${formatMinutes(stats.surplusMins)}超過`
                }
             </div>
