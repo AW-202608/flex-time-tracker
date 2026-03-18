@@ -58,7 +58,7 @@ export default function Dashboard() {
 
     const parsed = parseWorkTime(inputVal, breakMinutes);
     if (!parsed) {
-      setErrorMsg("入力形式が正しくありません。例：9:30-18:30 または 9:30～18:30 (5分単位)");
+      setErrorMsg("入力形式が正しくありません。例：9:30-18:30 (5分単位)");
       return;
     }
 
@@ -203,7 +203,7 @@ export default function Dashboard() {
             </div>
           </form>
           <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
-            * 休憩1時間固定・5分単位で入力してください
+            * 5分単位で入力してください
           </p>
         </section>
 

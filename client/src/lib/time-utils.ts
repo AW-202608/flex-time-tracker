@@ -9,21 +9,21 @@ export interface ParsedTimeResult {
 }
 
 /**
- * Parses full-width and half-width time strings and calculates working minutes.
+ * 全角および半角の時刻文字列を解析し、勤務時間を分単位で計算します。
  * Accepts formats like: 10:00-19:00, １０：００～１９：００
  */
 export function parseWorkTime(input: string, breakMinutes?: number): ParsedTimeResult | null {
   if (!input) return null;
 
-  // 1. Convert full-width characters to half-width
-  let normalized = input.replace(/[！-～]/g, (r) => 
+  // 全角文字を半角文字に変換する
+  let normalized = input.replace(/[！-～]/g, (r) =>
     String.fromCharCode(r.charCodeAt(0) - 0xFEE0)
   );
-  
-  // Convert various dash/tilde symbols to standard hyphen
+
+  // さまざまなダッシュ/チルダ記号を標準ハイフンに変換します
   normalized = normalized.replace(/[ー〜~－]/g, '-').replace(/\s+/g, '');
 
-  // 2. Extract times using regex (HH:MM-HH:MM)
+  // 正規表現（HH:MM-HH:MM）を使用して時刻を抽出します。
   const regex = /^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/;
   const match = normalized.match(regex);
 
@@ -34,28 +34,28 @@ export function parseWorkTime(input: string, breakMinutes?: number): ParsedTimeR
   const endH = parseInt(match[3], 10);
   const endM = parseInt(match[4], 10);
 
-  // Validate limits
-  if (startH >= 30 || startM >= 60 || endH >= 30 || endM >= 60) return null;
+  // 時間の入力制限（32時以上、または60分以上の数値はエラーとする）
+  if (startH >= 32 || startM >= 60 || endH >= 32 || endM >= 60) return null;
 
-  // Validate 5-minute increments
+  // 5分単位ではない場合エラーとする
   if (startM % 5 !== 0 || endM % 5 !== 0) return null;
 
   let startTotal = startH * 60 + startM;
   let endTotal = endH * 60 + endM;
 
-  // Handle crossing midnight (e.g., 22:00-02:00)
-  if (endTotal < startTotal) {
-    endTotal += 24 * 60; 
+  // 終了時間が開始時間以下の場合はエラーとするチェックを追加
+  if (endTotal <= startTotal) {
+    return null;
   }
 
-  // Configurable break time (default: 60 minutes)
+  // 休憩時間の設定（デフォルト値は60分とする）
   const BREAK_MINUTES = breakMinutes ?? 60;
   let actualMinutes = (endTotal - startTotal) - BREAK_MINUTES;
-  
-  // Prevent negative work time if logged less than 1 hour
-  if (actualMinutes < 0) actualMinutes = 0; 
 
-  // Standard work time is 8 hours (480 minutes)
+  // 労働時間が1時間未満（休憩を引いてマイナス）になる場合は、0分として扱う
+  if (actualMinutes < 0) actualMinutes = 0;
+
+  // 標準の労働時間は8時間（480分）と定義する
   const STANDARD_MINUTES = 8 * 60;
   const surplusDeficitMinutes = actualMinutes - STANDARD_MINUTES;
 
@@ -73,14 +73,14 @@ export function parseWorkTime(input: string, breakMinutes?: number): ParsedTimeR
 }
 
 /**
- * Format minutes into readable string (e.g. 150 -> "2時間30分", -30 -> "-0時間30分")
+ * 分単位の数値を読みやすい文字列に変換します (例: 150 -> "2時間30分", -30 -> "-0時間30分")
  */
 export function formatMinutes(minutes: number, showSign = false): string {
   const isNegative = minutes < 0;
   const absMin = Math.abs(minutes);
   const h = Math.floor(absMin / 60);
   const m = absMin % 60;
-  
+
   let result = `${h}時間`;
   if (m > 0) result += `${m}分`;
   else result += `00分`;
@@ -91,7 +91,7 @@ export function formatMinutes(minutes: number, showSign = false): string {
 }
 
 /**
- * Check if a date is a holiday (Weekends, Japanese Public Holidays, Dec 30 - Jan 4)
+ * 指定された日付が「休日」かどうかを判定します （土日、日本の祝日、年末年始 12/30～1/4 を含みます）
  */
 export function isHoliday(date: Date): boolean {
   if (isWeekend(date)) return true;
@@ -99,12 +99,12 @@ export function isHoliday(date: Date): boolean {
   const month = getMonth(date) + 1; // 0-indexed to 1-indexed
   const day = getDate(date);
 
-  // Year-end and New Year holidays (Dec 30 to Jan 4)
+  // 年末年始の特別休暇（12月30日以降、または1月4日以前）かどうかをチェック
   if ((month === 12 && day >= 30) || (month === 1 && day <= 4)) {
     return true;
   }
 
-  // Japanese Public Holidays
+  // ライブラリを使って「日本の国民の祝日」かどうかをチェック
   if (JapaneseHolidays.isHoliday(date)) {
     return true;
   }
@@ -113,12 +113,12 @@ export function isHoliday(date: Date): boolean {
 }
 
 /**
- * Get total standard working minutes for a given year and month (whole month)
+ * 指定された年月における「標準の合計労働時間（分）」を計算します。
  */
 export function getStandardWorkingMinutes(year: number, month: number): number {
   const daysInMonth = new Date(year, month, 0).getDate();
   let workingDays = 0;
-  
+
   for (let i = 1; i <= daysInMonth; i++) {
     const date = new Date(year, month - 1, i);
     if (!isHoliday(date)) workingDays++;
@@ -127,9 +127,9 @@ export function getStandardWorkingMinutes(year: number, month: number): number {
 }
 
 /**
- * Calculate cumulative actual minutes for a month.
- * - Logged days: use their recorded actualMinutes
- * - Unlogged working days up to today (or end of month for past months): count as 8h
+ * 今月の「現時点までの累計労働時間」を計算します。
+ * - 入力済みの日は、その時間をそのまま使う
+ * - 未入力の平日は、今日まで（または月末まで）を「8時間」として仮計算する
  */
 export function getCumulativeActualMinutes(
   year: number,
@@ -158,7 +158,7 @@ export function getCumulativeActualMinutes(
 }
 
 /**
- * Get working days elapsed up to today (or end of month for past months)
+ * 今日（または月末）までに経過した「標準的な労働時間（分）」を計算します。
  */
 export function getElapsedWorkingMinutes(year: number, month: number): number {
   const today = new Date();

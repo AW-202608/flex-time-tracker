@@ -162,7 +162,7 @@ export default function Dashboard() {
             </div>
           </form>
           <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
-            * 休憩1時間固定・5分単位で入力してください
+            * 5分単位で入力してください
           </p>
         </section>
 
