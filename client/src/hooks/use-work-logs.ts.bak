@@ -6,7 +6,6 @@ export interface WorkLog {
   date: string; // YYYY-MM-DD
   startTime: string;
   endTime: string;
-  breakMinutes: number;
   actualMinutes: number;
   surplusDeficitMinutes: number;
 }
