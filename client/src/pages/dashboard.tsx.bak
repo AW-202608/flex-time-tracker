@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Layout } from '@/components/layout';
 import { useWorkLogs, useSaveWorkLog, useDeleteWorkLog } from '@/hooks/use-work-logs';
-import { parseWorkTime, formatMinutes, getStandardWorkingMinutes, getCumulativeActualMinutes, getElapsedWorkingMinutes } from '@/lib/time-utils';
+import { parseWorkTime, formatMinutes, getStandardWorkingMinutes } from '@/lib/time-utils';
 import { format, startOfMonth, isSameMonth, isToday } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,12 +17,9 @@ export default function Dashboard() {
 
   const [inputVal, setInputVal] = useState('');
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
-  const [breakMinutes, setBreakMinutes] = useState<number>(60);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [editingDate, setEditingDate] = useState<string | null>(null);
-
-  const breakOptions = Array.from({ length: 13 }, (_, i) => i * 5); // 0,5,10,...,60
 
   // Derived state based on current viewed month
   const currentMonthLogs = useMemo(() => {
@@ -35,42 +32,34 @@ export default function Dashboard() {
     const month = currentDate.getMonth() + 1;
     
     const standardMins = getStandardWorkingMinutes(year, month);
+    
+    const actualMins = currentMonthLogs.reduce((acc, log) => acc + log.actualMinutes, 0);
+    const surplusMins = currentMonthLogs.reduce((acc, log) => acc + log.surplusDeficitMinutes, 0);
 
-    // Build a map of logged dates for fast lookup
-    const logMap = new Map(currentMonthLogs.map(log => [log.date, log.actualMinutes]));
-    const loggedDates = new Set(logMap.keys());
-
-    // Actual = logged days actual + unlogged working days × 8h (up to today)
-    const actualMins = getCumulativeActualMinutes(
-      year, month, loggedDates, (dateStr) => logMap.get(dateStr) ?? 0
-    );
-
-    // Surplus = actualMins so far - elapsed standard mins (only days up to today)
-    const elapsedMins = getElapsedWorkingMinutes(year, month);
-    const surplusMins = actualMins - elapsedMins;
-
-    return { standardMins, actualMins, surplusMins };
+    return {
+      standardMins,
+      actualMins,
+      surplusMins
+    };
   }, [currentMonthLogs, currentDate]);
 
   const handleInputSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
-    const parsed = parseWorkTime(inputVal, breakMinutes);
+    const parsed = parseWorkTime(inputVal);
     if (!parsed) {
-      setErrorMsg("入力形式が正しくありません。例：9:30-18:30 または 9:30～18:30 (5分単位)");
+      setErrorMsg("入力形式が正しくありません。例：9:30-18:30 (5分単位)");
       return;
     }
 
     saveLog({
       date: selectedDate,
-      breakMinutes,
       ...parsed
     }, {
       onSuccess: () => {
         setInputVal('');
         setEditingDate(null);
-        setBreakMinutes(60);
         setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
         // Ensure we are viewing the correct month
         if (!isSameMonth(new Date(selectedDate), currentDate)) {
@@ -84,20 +73,12 @@ export default function Dashboard() {
     setEditingDate(log.date);
     setSelectedDate(log.date);
     setInputVal(`${log.startTime}-${log.endTime}`);
-    setBreakMinutes(log.breakMinutes ?? 60);
   };
 
   const handleCancelEdit = () => {
     setEditingDate(null);
     setInputVal('');
-    setBreakMinutes(60);
     setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
-  };
-
-  const formatBreakLabel = (mins: number) => {
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return `${h}:${m.toString().padStart(2, '0')}`;
   };
 
   const nextMonth = () => setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
@@ -133,9 +114,9 @@ export default function Dashboard() {
             {editingDate ? '稼働を編集' : '稼働を記録'}
           </h2>
           <form onSubmit={handleInputSubmit} className="space-y-4">
-            {/* Date, Time, Break Input Row */}
-            <div className="flex flex-col sm:flex-row gap-3 max-w-4xl">
-              <div className="sm:w-44">
+            {/* Date and Time Input Row */}
+            <div className="flex flex-col sm:flex-row gap-3 max-w-3xl">
+              <div className="flex-1 relative">
                 <label className="text-sm text-muted-foreground mb-2 block">日付</label>
                 <input
                   type="date"
@@ -145,7 +126,7 @@ export default function Dashboard() {
                   className="w-full px-4 py-3 rounded-xl bg-background border-2 border-border transition-all focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:opacity-50"
                 />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 relative">
                 <label className="text-sm text-muted-foreground mb-2 block">勤務時間</label>
                 <input
                   type="text"
@@ -155,28 +136,6 @@ export default function Dashboard() {
                   disabled={isSaving}
                   className="w-full px-4 py-3 rounded-xl bg-background border-2 border-border text-lg transition-all focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 placeholder:text-muted-foreground/50 disabled:opacity-50"
                 />
-              </div>
-              <div className="sm:w-36">
-                <label className="text-sm text-muted-foreground mb-2 block">休憩時間</label>
-                <div className="relative">
-                  <select
-                    value={breakMinutes}
-                    onChange={(e) => setBreakMinutes(Number(e.target.value))}
-                    disabled={isSaving}
-                    className="w-full appearance-none px-4 py-3 pr-10 rounded-xl bg-background border-2 border-border transition-all focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:opacity-50 cursor-pointer"
-                  >
-                    {breakOptions.map((mins) => (
-                      <option key={mins} value={mins}>
-                        {formatBreakLabel(mins)}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -310,10 +269,9 @@ export default function Dashboard() {
                   <tr>
                     <th className="px-6 py-4 font-medium">日付</th>
                     <th className="px-6 py-4 font-medium">勤務時間</th>
-                    <th className="px-6 py-4 font-medium text-right">休憩</th>
                     <th className="px-6 py-4 font-medium text-right">実労働</th>
                     <th className="px-6 py-4 font-medium text-right">過不足</th>
-                    <th className="px-6 py-4 font-medium text-center w-24"></th>
+                    <th className="px-6 py-4 font-medium text-center w-16"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
@@ -336,9 +294,6 @@ export default function Dashboard() {
                           </td>
                           <td className="px-6 py-4 text-muted-foreground">
                             {log.startTime} - {log.endTime}
-                          </td>
-                          <td className="px-6 py-4 text-right text-muted-foreground">
-                            {(() => { const bm = log.breakMinutes ?? 60; const h = Math.floor(bm/60); const m = bm%60; return `${h}:${m.toString().padStart(2,'0')}`; })()}
                           </td>
                           <td className="px-6 py-4 text-right font-medium">
                             {formatMinutes(log.actualMinutes)}
